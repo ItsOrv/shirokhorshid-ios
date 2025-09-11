@@ -601,7 +601,8 @@ fileprivate func toLandingPageEnvironment(env: AppEnvironment) -> LandingPageEnv
         dateCompare: env.dateCompare,
         tunnelStatusSignal: env.tunnelStatusSignal,
         mainViewStore: env.mainViewStore,
-        mainDispatcher: env.mainDispatcher
+        mainDispatcher: env.mainDispatcher,
+        appInfo: env.appInfo
     )
 }
 

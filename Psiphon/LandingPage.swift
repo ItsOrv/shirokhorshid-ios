@@ -59,6 +59,7 @@ struct LandingPageEnvironment {
     let tunnelStatusSignal: SignalProducer<TunnelProviderVPNStatus, Never>
     let mainViewStore: (MainViewAction) -> Effect<Never>
     let mainDispatcher: MainDispatcher
+    let appInfo: () -> AppInfoProvider
 }
 
 let landingPageReducer = Reducer<LandingPageReducerState
@@ -120,13 +121,6 @@ let landingPageReducer = Reducer<LandingPageReducerState
         
         let landingPages = NonEmpty(array: environment.sharedDB.getHomepages())
         
-        #if DEBUG || DEV_RELEASE
-        let onConnectedMode: OnConnectedMode = environment.sharedDB.getSharedDebugFlags().onConnectedMode;
-        guard landingPages != nil && onConnectedMode != OnConnectedMode.purchaseRequired else {
-            return []
-        }
-        let randomlySelectedURL = URL(string: "https://landing.dev.psi.cash/dev-index.html")!
-        #else
         guard
             let landingPages = landingPages,
             let randomlySelectedURL = landingPages.randomElement()?.url
@@ -137,20 +131,34 @@ let landingPageReducer = Reducer<LandingPageReducerState
                     .warn, tag: landingPageTag, "no landing pages found").mapNever()
             ]
         }
-        #endif
         
-        state.pendingLandingPageOpening = true
+        var components = NSURLComponents(
+            url: randomlySelectedURL,
+            resolvingAgainstBaseURL: false
+        )
         
-        return [
-            modifyLandingPagePendingObtainingToken(
-                url: randomlySelectedURL,
-                psiCashAccountTypeSignal: environment.psiCashAccountTypeSignal,
-                psiCashEffects: environment.psiCashEffects
-            ).flatMap(.latest) {
-                environment.urlHandler.open($0, tunnelConnection, environment.mainDispatcher)
-            }
-            .map(LandingPageAction._urlOpened(success:))
-        ]
+        // Append client_version
+        var queryItems = components?.queryItems ?? []
+        queryItems
+            .append(URLQueryItem(name: "client_version",
+                                 value: environment.appInfo().clientVersion))
+        components?.queryItems = queryItems
+        
+        if let modifiedURL = components?.url {
+            
+            state.pendingLandingPageOpening = true
+            return [
+                environment.urlHandler
+                    .open(modifiedURL, tunnelConnection, environment.mainDispatcher)
+                .map(LandingPageAction._urlOpened(success:))
+            ]
+        } else {
+            return [
+                environment.feedbackLogger.log(.error, "failed to create URL")
+                .mapNever()
+            ]
+        }
+        
 
     case ._urlOpened(success: _):
         state.pendingLandingPageOpening = false
