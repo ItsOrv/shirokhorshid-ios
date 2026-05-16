@@ -16,7 +16,7 @@
 	<true/>
 	<key>com.apple.security.application-groups</key>
 	<array>
-		<string>group.ca.psiphon.Psiphon</string>
+		<string>group.com.shirokhorshid.vpn</string>
 	</array>
 </dict>
 </plist>

@@ -19,4 +19,4 @@
 
 #import "SharedConstants.h"
 
-NSString *_Nonnull PsiphonAppGroupIdentifier = @"group.ca.psiphon.Psiphon";
+NSString *_Nonnull PsiphonAppGroupIdentifier = @"group.com.shirokhorshid.vpn";
