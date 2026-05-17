@@ -71,6 +71,18 @@ UserDefaultsKey const TunnelUpstreamProxyURLKey = @"Tunnel-UpstreamProxyURL";
 
 UserDefaultsKey const TunnelCustomHeadersKey = @"Tunnel-CustomHeaders";
 
+// Shir o Khorshid settings keys
+UserDefaultsKey const ShirProtocolSelectionKey = @"shir_protocol_selection";
+UserDefaultsKey const ShirBeastModeKey = @"shir_beast_mode";
+UserDefaultsKey const ShirCdnFrontingCustomIpListKey = @"shir_cdn_fronting_custom_ip_list";
+UserDefaultsKey const ShirCdnFrontingCustomSniKey = @"shir_cdn_fronting_custom_sni";
+UserDefaultsKey const ShirConduitModeKey = @"shir_conduit_mode";
+UserDefaultsKey const ShirConduitTimeoutSecondsKey = @"shir_conduit_timeout_seconds";
+UserDefaultsKey const ShirRejectCensoredCountryProxiesKey = @"shir_reject_censored_country_proxies";
+UserDefaultsKey const ShirShareProxyOnNetworkKey = @"shir_share_proxy_on_network";
+UserDefaultsKey const ShirDisguiseIdentityKey = @"shir_disguise_identity";
+UserDefaultsKey const ShirStealthNotificationsKey = @"shir_stealth_notifications";
+
 
 /**
  * Key for boolean value that when TRUE indicates that the extension crashed before stop was called.
@@ -198,7 +210,7 @@ UserDefaultsKey const ContainerAppReceiptLatestSubscriptionExpiryDate_Legacy =
 }
 
 - (NSDictionary *)getTunnelCoreUserConfigs {
-    
+
     NSMutableDictionary *userConfigs = [[NSMutableDictionary alloc] init];
 
     NSString *egressRegion = [sharedDefaults stringForKey:TunnelEgressRegionKey];
@@ -223,8 +235,343 @@ UserDefaultsKey const ContainerAppReceiptLatestSubscriptionExpiryDate_Legacy =
         }
     }
 
+    // --- Shir o Khorshid: Protocol selection, beast mode, CDN fronting, conduit ---
+
+    NSString *protocolSelection = [self getProtocolSelection];
+
+    // Beast mode: aggressive establishment
+    if ([self getBeastMode]) {
+        userConfigs[@"AggressiveEstablishment"] = @YES;
+    }
+
+    // DNS resolver alternate servers
+    userConfigs[@"DNSResolverAlternateServers"] = @[@"1.1.1.1", @"1.0.0.1", @"8.8.8.8", @"8.8.4.4"];
+
+    // Protocol-specific configuration
+    if ([protocolSelection isEqualToString:@"conduit"]) {
+        userConfigs[@"LimitTunnelProtocols"] = @[
+            @"INPROXY-WEBRTC-OSSH",
+            @"INPROXY-WEBRTC-UNFRONTED-MEEK-HTTPS-OSSH",
+            @"INPROXY-WEBRTC-UNFRONTED-MEEK-SESSION-TICKET-OSSH",
+            @"INPROXY-WEBRTC-FRONTED-MEEK-OSSH",
+            @"INPROXY-WEBRTC-FRONTED-MEEK-HTTP-OSSH",
+            @"INPROXY-WEBRTC-QUIC-OSSH"
+        ];
+
+        // Reject proxies from censored countries
+        if ([self getRejectCensoredCountryProxies]) {
+            userConfigs[@"InproxyRejectProxyCountryCodes"] = @[@"IR", @"CN", @"RU", @"BY", @"TM", @"KP"];
+        }
+
+    } else if ([protocolSelection isEqualToString:@"cdn_fronting"]) {
+        userConfigs[@"LimitTunnelProtocols"] = @[@"FRONTED-MEEK-CDN-OSSH"];
+        userConfigs[@"DisableTactics"] = @YES;
+
+    } else if ([protocolSelection isEqualToString:@"direct"]) {
+        userConfigs[@"LimitTunnelProtocols"] = @[
+            @"SSH", @"OSSH", @"TLS-OSSH", @"QUIC-OSSH",
+            @"SHADOWSOCKS-OSSH", @"FRONTED-MEEK-CDN-OSSH"
+        ];
+        userConfigs[@"DisableTactics"] = @YES;
+    }
+    // "auto" mode: don't set LimitTunnelProtocols
+
+    // CDN Fronting overrides (for auto, direct, cdn_fronting modes)
+    BOOL enableCdnFronting = [protocolSelection isEqualToString:@"auto"] ||
+                             [protocolSelection isEqualToString:@"direct"] ||
+                             [protocolSelection isEqualToString:@"cdn_fronting"];
+    if (enableCdnFronting) {
+        NSArray *overrides = [self buildCdnFrontingDialOverrides];
+        if (overrides.count > 0) {
+            userConfigs[@"FrontedMeekDialOverrides"] = overrides;
+            userConfigs[@"FrontedMeekDialOverridesProbability"] = @(1.0);
+        }
+    }
+
+    // LAN proxy sharing
+    if ([self getShareProxyOnNetwork]) {
+        userConfigs[@"ListenInterface"] = @"any";
+    }
+
     return userConfigs;
-    
+}
+
+#pragma mark - CDN Fronting Helpers
+
+static const NSInteger kMaxCustomCdnFrontingIPs = 32;
+
++ (BOOL)isValidIPv4Address:(NSString *)ipAddress {
+    NSArray *parts = [ipAddress componentsSeparatedByString:@"."];
+    if (parts.count != 4) return NO;
+    for (NSString *part in parts) {
+        if (part.length == 0 || part.length > 3) return NO;
+        NSCharacterSet *digits = [NSCharacterSet decimalDigitCharacterSet];
+        if (![[NSCharacterSet characterSetWithCharactersInString:part] isSubsetOfSet:digits]) return NO;
+        NSInteger value = [part integerValue];
+        if (value < 0 || value > 255) return NO;
+    }
+    return YES;
+}
+
++ (BOOL)isValidHostname:(NSString *)hostname {
+    if (!hostname || hostname.length == 0 || hostname.length > 253) return NO;
+    if ([self isValidIPv4Address:hostname]) return NO;
+    NSString *normalized = hostname;
+    if ([normalized hasSuffix:@"."]) {
+        normalized = [normalized substringToIndex:normalized.length - 1];
+    }
+    if (normalized.length == 0) return NO;
+    NSArray *labels = [normalized componentsSeparatedByString:@"."];
+    for (NSString *label in labels) {
+        if (label.length == 0 || label.length > 63) return NO;
+        if ([label hasPrefix:@"-"] || [label hasSuffix:@"-"]) return NO;
+        NSCharacterSet *allowed = [NSCharacterSet characterSetWithCharactersInString:
+            @"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-"];
+        if (![[NSCharacterSet characterSetWithCharactersInString:label] isSubsetOfSet:allowed]) return NO;
+    }
+    return YES;
+}
+
++ (NSArray<NSString *> *)parseCdnFrontingCustomIpList:(NSString *)customIpList {
+    NSMutableArray *ipAddresses = [NSMutableArray array];
+    if (!customIpList || customIpList.length == 0) return ipAddresses;
+
+    NSMutableSet *seen = [NSMutableSet set];
+    NSArray *entries = [customIpList componentsSeparatedByCharactersInSet:
+        [NSCharacterSet characterSetWithCharactersInString:@" ,;\n\r\t"]];
+    for (NSString *entry in entries) {
+        NSString *ip = [entry stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+        if (ip.length == 0 || ![self isValidIPv4Address:ip]) continue;
+        if (![seen containsObject:ip]) {
+            [seen addObject:ip];
+            [ipAddresses addObject:ip];
+            if ((NSInteger)ipAddresses.count >= kMaxCustomCdnFrontingIPs) break;
+        }
+    }
+    return ipAddresses;
+}
+
++ (NSString *)normalizeCdnFrontingCustomSni:(NSString *)customSni {
+    if (!customSni || customSni.length == 0) return @"";
+    NSString *sni = [customSni stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+    if (![self isValidHostname:sni]) return @"";
+    return sni;
+}
+
+- (NSDictionary *)makeCdnFrontingOverrideWithID:(NSString *)overrideID
+                   matchFrontingProviderIDRegexes:(NSArray *_Nullable)providerRegexes
+                          matchDialAddressRegexes:(NSArray *_Nullable)addressRegexes
+                                     dialAddress:(NSString *)dialAddress
+                                   sniServerName:(NSString *)sniServerName
+                                verifyServerNames:(NSArray *)verifyServerNames
+                                   alpnProtocols:(NSArray *)alpnProtocols {
+    NSMutableDictionary *override = [NSMutableDictionary dictionary];
+    override[@"OverrideID"] = overrideID;
+    if (providerRegexes) override[@"MatchFrontingProviderIDRegexes"] = providerRegexes;
+    if (addressRegexes) override[@"MatchDialAddressRegexes"] = addressRegexes;
+    override[@"DialAddresses"] = @[dialAddress];
+    override[@"SNIServerName"] = sniServerName;
+    override[@"VerifyServerNames"] = verifyServerNames;
+    override[@"ALPNProtocols"] = alpnProtocols;
+    override[@"TLSProfile"] = @"Chrome-83";
+    return [override copy];
+}
+
+- (NSArray *)makeEdgeVerifyServerNamesForIP:(NSString *)ipAddress sni:(NSString *)sniServerName {
+    NSMutableArray *names = [NSMutableArray array];
+    NSMutableSet *added = [NSMutableSet set];
+
+    void (^addUnique)(NSString *) = ^(NSString *name) {
+        if (name.length > 0 && ![added containsObject:name]) {
+            [added addObject:name];
+            [names addObject:name];
+        }
+    };
+
+    addUnique(sniServerName);
+    addUnique(ipAddress);
+    addUnique(@"a248.e.akamai.net");
+    addUnique(@"a.akamaized.net");
+    addUnique(@"a.akamaized-staging.net");
+    addUnique(@"a.akamaihd.net");
+    addUnique(@"a.akamaihd-staging.net");
+    addUnique(@"www.akamai.com");
+
+    return [names copy];
+}
+
+- (NSDictionary *)makeEdgeCdnFrontingOverrideWithID:(NSString *)overrideID
+                                          ipAddress:(NSString *)ipAddress
+                                          customSni:(NSString *)customSni {
+    NSString *sniServerName = (customSni.length > 0) ? customSni : ipAddress;
+    return [self makeCdnFrontingOverrideWithID:overrideID
+                  matchFrontingProviderIDRegexes:nil
+                         matchDialAddressRegexes:@[@".*"]
+                                    dialAddress:ipAddress
+                                  sniServerName:sniServerName
+                               verifyServerNames:[self makeEdgeVerifyServerNamesForIP:ipAddress sni:sniServerName]
+                                  alpnProtocols:@[@"http/1.1"]];
+}
+
+- (NSArray *)buildCdnFrontingDialOverrides {
+    NSMutableArray *overrides = [NSMutableArray array];
+    NSMutableSet *edgeDialAddresses = [NSMutableSet set];
+
+    NSString *customIpList = [self getCdnFrontingCustomIpList];
+    NSString *customSni = [[self class] normalizeCdnFrontingCustomSni:[self getCdnFrontingCustomSni]];
+
+    // Fastly provider override
+    NSArray *fastlyVerifyServerNames = @[@"www.python.org", @"pypi.org", @"fastly.com",
+        @"www.fastly.com", @"developer.fastly.com", @"githubassets.com",
+        @"github.com", @"github.io", @"githubusercontent.com"];
+    NSArray *fastlyALPNProtocols = @[@"h2", @"http/1.1"];
+
+    [overrides addObject:[self makeCdnFrontingOverrideWithID:@"fastly-provider"
+                              matchFrontingProviderIDRegexes:@[@"(?i)fastly"]
+                                     matchDialAddressRegexes:nil
+                                                dialAddress:@"pypi.org"
+                                              sniServerName:@"pypi.org"
+                                           verifyServerNames:fastlyVerifyServerNames
+                                              alpnProtocols:fastlyALPNProtocols]];
+
+    [overrides addObject:[self makeCdnFrontingOverrideWithID:@"fastly-address"
+                              matchFrontingProviderIDRegexes:nil
+                                     matchDialAddressRegexes:@[@"(?i)(fastly|pypi|python|github)"]
+                                                dialAddress:@"pypi.org"
+                                              sniServerName:@"pypi.org"
+                                           verifyServerNames:fastlyVerifyServerNames
+                                              alpnProtocols:fastlyALPNProtocols]];
+
+    // Custom user IPs
+    NSArray *customIPs = [[self class] parseCdnFrontingCustomIpList:customIpList];
+    NSInteger customIndex = 1;
+    for (NSString *ip in customIPs) {
+        if (![edgeDialAddresses containsObject:ip]) {
+            [edgeDialAddresses addObject:ip];
+            [overrides addObject:[self makeEdgeCdnFrontingOverrideWithID:
+                [NSString stringWithFormat:@"edge-custom-%ld", (long)customIndex]
+                                                              ipAddress:ip
+                                                              customSni:customSni]];
+            customIndex++;
+        }
+    }
+
+    // Hardcoded Akamai edge IPs
+    NSArray *edgeEntries = @[
+        @[@"edge-a-1", @"23.215.0.206"],
+        @[@"edge-a-2", @"23.215.0.203"],
+        @[@"edge-b-1", @"23.212.250.91"],
+        @[@"edge-b-2", @"23.212.250.78"],
+        @[@"edge-c-1", @"23.12.147.13"],
+        @[@"edge-c-2", @"23.12.147.29"],
+        @[@"edge-d-1", @"23.73.207.8"],
+        @[@"edge-d-2", @"23.73.207.15"],
+        @[@"edge-original", @"92.123.102.43"]
+    ];
+    for (NSArray *entry in edgeEntries) {
+        NSString *edgeId = entry[0];
+        NSString *edgeIp = entry[1];
+        if (![edgeDialAddresses containsObject:edgeIp]) {
+            [edgeDialAddresses addObject:edgeIp];
+            [overrides addObject:[self makeEdgeCdnFrontingOverrideWithID:edgeId
+                                                              ipAddress:edgeIp
+                                                              customSni:customSni]];
+        }
+    }
+
+    return [overrides copy];
+}
+
+#pragma mark - Shir o Khorshid Settings
+
+- (NSString *)getProtocolSelection {
+    NSString *value = [sharedDefaults stringForKey:ShirProtocolSelectionKey];
+    return value ?: @"auto";
+}
+
+- (void)setProtocolSelection:(NSString *)mode {
+    [sharedDefaults setObject:mode forKey:ShirProtocolSelectionKey];
+}
+
+- (BOOL)getBeastMode {
+    if ([sharedDefaults objectForKey:ShirBeastModeKey] == nil) {
+        return YES; // default enabled
+    }
+    return [sharedDefaults boolForKey:ShirBeastModeKey];
+}
+
+- (void)setBeastMode:(BOOL)enabled {
+    [sharedDefaults setBool:enabled forKey:ShirBeastModeKey];
+}
+
+- (NSString *)getCdnFrontingCustomIpList {
+    return [sharedDefaults stringForKey:ShirCdnFrontingCustomIpListKey] ?: @"";
+}
+
+- (void)setCdnFrontingCustomIpList:(NSString *)ipList {
+    [sharedDefaults setObject:ipList forKey:ShirCdnFrontingCustomIpListKey];
+}
+
+- (NSString *)getCdnFrontingCustomSni {
+    return [sharedDefaults stringForKey:ShirCdnFrontingCustomSniKey] ?: @"";
+}
+
+- (void)setCdnFrontingCustomSni:(NSString *)sni {
+    [sharedDefaults setObject:sni forKey:ShirCdnFrontingCustomSniKey];
+}
+
+- (NSString *)getConduitMode {
+    NSString *value = [sharedDefaults stringForKey:ShirConduitModeKey];
+    return value ?: @"auto";
+}
+
+- (void)setConduitMode:(NSString *)mode {
+    [sharedDefaults setObject:mode forKey:ShirConduitModeKey];
+}
+
+- (NSInteger)getConduitTimeoutSeconds {
+    NSInteger value = [sharedDefaults integerForKey:ShirConduitTimeoutSecondsKey];
+    return value > 0 ? value : 180; // default 3 minutes
+}
+
+- (void)setConduitTimeoutSeconds:(NSInteger)seconds {
+    [sharedDefaults setInteger:seconds forKey:ShirConduitTimeoutSecondsKey];
+}
+
+- (BOOL)getRejectCensoredCountryProxies {
+    if ([sharedDefaults objectForKey:ShirRejectCensoredCountryProxiesKey] == nil) {
+        return YES; // default enabled
+    }
+    return [sharedDefaults boolForKey:ShirRejectCensoredCountryProxiesKey];
+}
+
+- (void)setRejectCensoredCountryProxies:(BOOL)reject {
+    [sharedDefaults setBool:reject forKey:ShirRejectCensoredCountryProxiesKey];
+}
+
+- (BOOL)getShareProxyOnNetwork {
+    return [sharedDefaults boolForKey:ShirShareProxyOnNetworkKey];
+}
+
+- (void)setShareProxyOnNetwork:(BOOL)share {
+    [sharedDefaults setBool:share forKey:ShirShareProxyOnNetworkKey];
+}
+
+- (NSString *)getDisguiseIdentity {
+    NSString *value = [sharedDefaults stringForKey:ShirDisguiseIdentityKey];
+    return value ?: @"default";
+}
+
+- (void)setDisguiseIdentity:(NSString *)identity {
+    [sharedDefaults setObject:identity forKey:ShirDisguiseIdentityKey];
+}
+
+- (BOOL)getStealthNotifications {
+    return [sharedDefaults boolForKey:ShirStealthNotificationsKey];
+}
+
+- (void)setStealthNotifications:(BOOL)enabled {
+    [sharedDefaults setBool:enabled forKey:ShirStealthNotificationsKey];
 }
 
 #pragma mark - Container Data (Data originating in the container)

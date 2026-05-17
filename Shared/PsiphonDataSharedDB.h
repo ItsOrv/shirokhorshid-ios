@@ -124,6 +124,48 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (NSDictionary *)getTunnelCoreUserConfigs;
 
+#pragma mark - Shir o Khorshid Settings
+
+/// Protocol selection: "auto", "conduit", "cdn_fronting", "direct"
+- (NSString *)getProtocolSelection;
+- (void)setProtocolSelection:(NSString *_Nullable)mode;
+
+/// Beast mode: aggressive establishment
+- (BOOL)getBeastMode;
+- (void)setBeastMode:(BOOL)enabled;
+
+/// CDN Fronting custom edge IPs (comma/newline separated)
+- (NSString *)getCdnFrontingCustomIpList;
+- (void)setCdnFrontingCustomIpList:(NSString *_Nullable)ipList;
+
+/// CDN Fronting custom SNI hostname
+- (NSString *)getCdnFrontingCustomSni;
+- (void)setCdnFrontingCustomSni:(NSString *_Nullable)sni;
+
+/// Conduit mode: "auto", "shirokhorshid", "public"
+- (NSString *)getConduitMode;
+- (void)setConduitMode:(NSString *_Nullable)mode;
+
+/// Conduit fallback timeout in seconds
+- (NSInteger)getConduitTimeoutSeconds;
+- (void)setConduitTimeoutSeconds:(NSInteger)seconds;
+
+/// Reject proxies from censored countries
+- (BOOL)getRejectCensoredCountryProxies;
+- (void)setRejectCensoredCountryProxies:(BOOL)reject;
+
+/// Share proxy on local network
+- (BOOL)getShareProxyOnNetwork;
+- (void)setShareProxyOnNetwork:(BOOL)share;
+
+/// Disguise identity: "default", "calculator", "weather", "notes", "clock"
+- (NSString *)getDisguiseIdentity;
+- (void)setDisguiseIdentity:(NSString *_Nullable)identity;
+
+/// Stealth notifications
+- (BOOL)getStealthNotifications;
+- (void)setStealthNotifications:(BOOL)enabled;
+
 #pragma mark - Container Data (Data originating in the container)
 
 /** Returns last foreground state value written by the container.
