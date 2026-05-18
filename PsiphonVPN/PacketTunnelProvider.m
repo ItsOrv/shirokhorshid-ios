@@ -52,6 +52,7 @@
 #import "NSString+Additions.h"
 #import "LocalNotificationService.h"
 #import "PNEApplicationParameters.h"
+#import "ShirOKhorshidConstants.h"
 
 NSErrorDomain _Nonnull const PsiphonTunnelErrorDomain = @"PsiphonTunnelErrorDomain";
 
@@ -104,6 +105,10 @@ typedef NS_ENUM(NSInteger, TunnelProviderState) {
 
 @property (nonatomic) HostAppProtocol *hostAppProtocol;
 
+// Shir o Khorshid: Conduit fallback — properties for cross-category access
+@property (atomic) BOOL conduitFallbackToPublic;
+@property (nonatomic, nullable) dispatch_source_t conduitFallbackTimer;
+
 @end
 
 @implementation PacketTunnelProvider {
@@ -112,25 +117,25 @@ typedef NS_ENUM(NSInteger, TunnelProviderState) {
     dispatch_queue_t workQueue;
 
     AppProfiler *_Nullable appProfiler;
-    
+
     // sessionConfigValues should only be accessed through the `workQueue`.
     AuthorizationStore *_Nonnull authorizationStore;
-    
+
     // localDataStore should only be accessed through the `workQueue`.
     ExtensionDataStore *_Nonnull localDataStore;
-    
+
     PsiphonConfigSponsorIds *_Nullable psiphonConfigSponsorIds;
-    
+
     // ApplicationParameters.
     // Values are stored here and committed to disk after on onConnected.
     // Access should be protected by `workQueue`.
     PNEApplicationParameters *_Nonnull applicationParameters;
-    
+
     // IPv4 address of Packet Tunnel DNS resolver.
     // Value is set only once on `getTunnelSettings`,
     // and subsequently passed into PsiphonTunnel.
     NSString *_Nullable packetTunnelDNSResolverIPv4Address;
-    
+
 }
 
 - (id)init {
@@ -159,6 +164,10 @@ typedef NS_ENUM(NSInteger, TunnelProviderState) {
         _hostAppProtocol = [[HostAppProtocol alloc] init];
         
         applicationParameters = [[PNEApplicationParameters alloc] init];
+
+        // Shir o Khorshid: conduit fallback
+        self.conduitFallbackToPublic = NO;
+        self.conduitFallbackTimer = nil;
     }
     return self;
 }
@@ -299,9 +308,12 @@ typedef NS_ENUM(NSInteger, TunnelProviderState) {
             }
 
             error = [weakSelf startPsiphonTunnel];
-            
+
             if (error) {
                 errorHandler(error);
+            } else {
+                // Shir o Khorshid: Start conduit fallback timer if needed
+                [weakSelf startConduitFallbackTimerIfNeeded];
             }
 
         }];
@@ -336,6 +348,10 @@ typedef NS_ENUM(NSInteger, TunnelProviderState) {
                                json:@{@"Event":@"Stop",
                                       @"StopReason": [PacketTunnelUtils textStopReason:reason],
                                       @"StopCode": @(reason)}];
+
+    // Shir o Khorshid: Cancel fallback timer and reset state
+    [self cancelConduitFallbackTimer];
+    self.conduitFallbackToPublic = NO;
 
     [self.sharedDB setExtensionStopReason:reason];
 
@@ -611,6 +627,70 @@ typedef NS_ENUM(NSInteger, TunnelProviderState) {
     return FALSE;
 }
 
+#pragma mark - Shir o Khorshid Conduit Fallback
+
+- (void)startConduitFallbackTimerIfNeeded {
+    NSString *protocolSelection = [self.sharedDB getProtocolSelection];
+    NSString *conduitMode = [self.sharedDB getConduitMode];
+
+    // Only start timer for conduit protocol in auto mode
+    if (![protocolSelection isEqualToString:@"conduit"] ||
+        ![conduitMode isEqualToString:@"auto"]) {
+        return;
+    }
+
+    // Cancel any existing timer
+    [self cancelConduitFallbackTimer];
+
+    // Reset fallback state
+    self.conduitFallbackToPublic = NO;
+
+    NSInteger timeoutSeconds = [self.sharedDB getConduitTimeoutSeconds];
+
+    PacketTunnelProvider *__weak weakSelf = self;
+
+    self.conduitFallbackTimer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, workQueue);
+
+    dispatch_source_set_timer(self.conduitFallbackTimer,
+                              dispatch_time(DISPATCH_TIME_NOW, timeoutSeconds * NSEC_PER_SEC),
+                              DISPATCH_TIME_FOREVER, // one-shot
+                              1 * NSEC_PER_SEC); // 1s leeway
+
+    dispatch_source_set_event_handler(self.conduitFallbackTimer, ^{
+        PacketTunnelProvider *strongSelf = weakSelf;
+        if (!strongSelf) return;
+
+        // Check if still not connected
+        if ([strongSelf.psiphonTunnel getConnectionState] != PsiphonConnectionStateConnected) {
+            [PsiFeedbackLogger infoWithType:PacketTunnelProviderLogType
+                                     format:@"Shir o Khorshid: conduit fallback timer fired after %ld seconds, switching to public conduits",
+                                            (long)timeoutSeconds];
+
+            strongSelf.conduitFallbackToPublic = YES;
+
+            // Reconnect — getPsiphonConfig will be called again by tunnel-core,
+            // this time without compartment ID since _conduitFallbackToPublic is YES.
+            strongSelf.reasserting = YES;
+
+            NSString *sponsorId = [strongSelf.sharedDB getCurrentSponsorId];
+            [strongSelf.psiphonTunnel reconnectWithConfig:sponsorId :nil];
+        }
+    });
+
+    dispatch_resume(self.conduitFallbackTimer);
+
+    [PsiFeedbackLogger infoWithType:PacketTunnelProviderLogType
+                             format:@"Shir o Khorshid: conduit fallback timer started (%ld seconds)",
+                                    (long)timeoutSeconds];
+}
+
+- (void)cancelConduitFallbackTimer {
+    if (self.conduitFallbackTimer != nil) {
+        dispatch_source_cancel(self.conduitFallbackTimer);
+        self.conduitFallbackTimer = nil;
+    }
+}
+
 @end
 
 #pragma mark -  PacketTunnelProvider utility functions
@@ -769,6 +849,29 @@ typedef NS_ENUM(NSInteger, TunnelProviderState) {
                                            updatedSharedDB:self.sharedDB];
     }
 
+    // --- Shir o Khorshid: Conduit compartment ID ---
+    NSString *protocolSelection = [self.sharedDB getProtocolSelection];
+    if ([protocolSelection isEqualToString:@"conduit"]) {
+        NSString *conduitMode = [self.sharedDB getConduitMode];
+        BOOL useCompartmentId = NO;
+
+        if ([conduitMode isEqualToString:@"shirokhorshid"]) {
+            useCompartmentId = YES;
+        } else if ([conduitMode isEqualToString:@"public"]) {
+            useCompartmentId = NO;
+        } else {
+            // Auto mode: use compartment ID unless fallback triggered
+            useCompartmentId = !self.conduitFallbackToPublic;
+        }
+
+        if (useCompartmentId) {
+            NSString *compartmentId = SHIR_CONDUIT_COMPARTMENT_ID;
+            if (compartmentId && compartmentId.length > 0) {
+                mutableConfigCopy[@"InproxyClientPersonalCompartmentID"] = compartmentId;
+            }
+        }
+    }
+
     // Specific config changes for iOS VPN app on Mac.
     if ([AppInfo isiOSAppOnMac] == TRUE) {
         [mutableConfigCopy removeObjectForKey:@"LimitIntensiveConnectionWorkers"];
@@ -844,16 +947,19 @@ typedef NS_ENUM(NSInteger, TunnelProviderState) {
 
 - (void)onConnected {
     PacketTunnelProvider *__weak weakSelf = self;
-    
+
     dispatch_async(self->workQueue, ^{
         PacketTunnelProvider *__strong strongSelf = weakSelf;
         if (strongSelf == nil) {
             return;
         }
-        
+
+        // Shir o Khorshid: Cancel conduit fallback timer on successful connection
+        [strongSelf cancelConduitFallbackTimer];
+
         // TODO: Allow for the possiblity that parameters are changed after onConnected.
         //       as of now application parameters are overwritten.
-        
+
         // Persists ApplicationParameters.
         [self->applicationParameters setVpnSessionNumber:[self.sharedDB getVPNSessionNumber]];
         
