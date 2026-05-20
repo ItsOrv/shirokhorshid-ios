@@ -1,0 +1,93 @@
+/* شیر و خورشید - رشته‌های فارسی */
+
+/* Navigation */
+"Shir o Khorshid" = "شیر و خورشید";
+
+/* Connection Section */
+"Connection" = "اتصال";
+"Protocol & Connection" = "پروتکل و اتصال";
+"Fronting" = "فرانتینگ";
+"CDN Fronting" = "فرانتینگ CDN";
+"Relay" = "رله";
+"Conduit / InProxy" = "کندویت / اینپروکسی";
+"Network" = "شبکه";
+"Network Sharing" = "اشتراک‌گذاری شبکه";
+"Stealth" = "حالت مخفی";
+"Disguise Mode" = "حالت مخفی";
+
+/* Protocol Selection */
+"Protocol" = "پروتکل";
+"Auto" = "خودکار";
+"Automatically selects the best protocol" = "بهترین پروتکل به صورت خودکار انتخاب می‌شود";
+"Conduit (InProxy)" = "کندویت (اینپروکسی)";
+"Connect via volunteer relay proxies" = "اتصال از طریق پروکسی‌های داوطلبانه";
+"CDN Fronting" = "فرانتینگ CDN";
+"Use CDN domain fronting (FRONTED-MEEK-CDN-OSSH)" = "استفاده از فرانتینگ دامنه CDN (FRONTED-MEEK-CDN-OSSH)";
+"Direct" = "مستقیم";
+"Direct protocols: SSH, OSSH, TLS-OSSH, QUIC, Shadowsocks" = "پروتکل‌های مستقیم: SSH، OSSH، TLS-OSSH، QUIC، Shadowsocks";
+
+/* Beast Mode */
+"Establishment" = "برقراری اتصال";
+"Beast Mode" = "حالت جنگی";
+"Aggressive: tries all protocols on every server" = "تهاجمی: تمام پروتکل‌ها را روی همه سرورها امتحان می‌کند";
+"Normal: randomly selects protocols per server" = "عادی: پروتکل‌ها به صورت تصادفی برای هر سرور انتخاب می‌شوند";
+
+/* CDN Fronting Settings */
+"Edge IP Addresses" = "آدرس‌های IP اج";
+"Custom CDN Edge IPs" = "آی‌پی‌های اختصاصی CDN Edge";
+"Enter up to 32 IPv4 addresses, one per line or comma-separated" = "حداکثر ۳۲ آدرس IPv4 وارد کنید، هر خط یکی یا جدا شده با کاما";
+"Built-in Akamai edge IPs (9) are always included. Your custom IPs are added in addition." = "آی‌پی‌های داخلی آکامای (۹ عدد) همیشه شامل هستند. آی‌پی‌های اختصاصی شما اضافه می‌شوند.";
+"SNI Override" = "تغییر SNI";
+"Custom SNI Hostname" = "نام هاست SNI اختصاصی";
+"Optional: override the SNI server name for edge connections" = "اختیاری: تغییر نام سرور SNI برای اتصالات اج";
+"e.g. example.com" = "مثال: example.com";
+"If empty, the edge IP address itself is used as SNI." = "اگر خالی باشد، خود آدرس IP اج به عنوان SNI استفاده می‌شود.";
+"Invalid IP: %@" = "آی‌پی نامعتبر: %@";
+"Maximum 32 IPs allowed" = "حداکثر ۳۲ آی‌پی مجاز است";
+"SNI must be a hostname, not an IP address" = "SNI باید نام هاست باشد، نه آدرس IP";
+"Hostname too long (max 253 characters)" = "نام هاست خیلی بلند است (حداکثر ۲۵۳ کاراکتر)";
+"Invalid label: %@" = "برچسب نامعتبر: %@";
+"Invalid characters in: %@" = "کاراکترهای نامعتبر در: %@";
+
+/* Conduit Settings */
+"Conduit Mode" = "حالت کندویت";
+"Auto (Recommended)" = "خودکار (پیشنهادی)";
+"Tries Shir o Khorshid conduits first, falls back to public after timeout" = "ابتدا کندویت‌های شیر و خورشید را امتحان می‌کند، پس از اتمام زمان به عمومی تغییر می‌دهد";
+"Shir o Khorshid Only" = "فقط شیر و خورشید";
+"Only connect via Shir o Khorshid volunteer relays" = "فقط از طریق رله‌های داوطلبانه شیر و خورشید متصل شوید";
+"Public Conduits" = "کندویت‌های عمومی";
+"Use any public InProxy-compatible relay" = "استفاده از هر رله عمومی سازگار با InProxy";
+"Fallback Timeout" = "زمان بازگشت";
+"2 minutes" = "۲ دقیقه";
+"3 minutes (default)" = "۳ دقیقه (پیش‌فرض)";
+"5 minutes" = "۵ دقیقه";
+"10 minutes" = "۱۰ دقیقه";
+"Time to wait for Shir o Khorshid conduits before falling back to public relays" = "زمان انتظار برای کندویت‌های شیر و خورشید قبل از بازگشت به رله‌های عمومی";
+"Security" = "امنیت";
+"Reject Censored Country Proxies" = "رد پروکسی‌های کشورهای سانسور شده";
+"Block relays from Iran, China, Russia, Belarus, Turkmenistan, North Korea" = "مسدودسازی رله‌ها از ایران، چین، روسیه، بلاروس، ترکمنستان، کره شمالی";
+
+/* Network Sharing */
+"LAN Proxy" = "پروکسی شبکه محلی";
+"Share Proxy on Network" = "اشتراک‌گذاری پروکسی در شبکه";
+"Allow other devices on your WiFi to use this VPN connection" = "به دستگاه‌های دیگر در شبکه Wi-Fi اجازه دهید از این اتصال VPN استفاده کنند";
+"Other devices can connect using:" = "دستگاه‌های دیگر می‌توانند با استفاده از:";
+"Configure the proxy address on other devices to use this connection." = "آدرس پروکسی را در دستگاه‌های دیگر تنظیم کنید تا از این اتصال استفاده کنند.";
+"Security Warning" = "هشدار امنیتی";
+"Enable" = "فعال‌سازی";
+"Cancel" = "انصراف";
+"Sharing the proxy on your local network allows any device on the same WiFi network to route traffic through your VPN connection. Only enable this on trusted networks." = "اشتراک‌گذاری پروکسی در شبکه محلی به هر دستگاهی در همان شبکه Wi-Fi اجازه می‌دهد ترافیک خود را از طریق اتصال VPN شما عبور دهد. فقط در شبکه‌های مورد اعتماد فعال کنید.";
+
+/* Disguise Mode */
+"App Appearance" = "ظاهر برنامه";
+"Shir o Khorshid" = "شیر و خورشید";
+"Calculator" = "ماشین‌حساب";
+"Weather" = "هواشناسی";
+"Notes" = "یادداشت‌ها";
+"Clock" = "ساعت";
+"Change the app icon to disguise it. iOS will show a brief notification when the icon changes." = "آیکون برنامه را تغییر دهید تا مخفی شود. iOS هنگام تغییر آیکون یک اعلان کوتاه نمایش می‌دهد.";
+"Notifications" = "اعلان‌ها";
+"Stealth Notifications" = "اعلان‌های مخفی";
+"Show disguise-appropriate notification content instead of VPN status" = "نمایش محتوای اعلان متناسب با ظاهر انتخاب شده به جای وضعیت VPN";
+"Note: The VPN indicator in the status bar cannot be hidden on iOS." = "توجه: نشانگر VPN در نوار وضعیت در iOS قابل مخفی‌سازی نیست.";
+"This device does not support alternate icons" = "این دستگاه از آیکون‌های جایگزین پشتیبانی نمی‌کند";

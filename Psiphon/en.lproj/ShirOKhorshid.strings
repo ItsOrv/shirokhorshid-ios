@@ -1,0 +1,93 @@
+/* Shir o Khorshid - English Localizable Strings */
+
+/* Navigation */
+"Shir o Khorshid" = "Shir o Khorshid";
+
+/* Connection Section */
+"Connection" = "Connection";
+"Protocol & Connection" = "Protocol & Connection";
+"Fronting" = "Fronting";
+"CDN Fronting" = "CDN Fronting";
+"Relay" = "Relay";
+"Conduit / InProxy" = "Conduit / InProxy";
+"Network" = "Network";
+"Network Sharing" = "Network Sharing";
+"Stealth" = "Stealth";
+"Disguise Mode" = "Disguise Mode";
+
+/* Protocol Selection */
+"Protocol" = "Protocol";
+"Auto" = "Auto";
+"Automatically selects the best protocol" = "Automatically selects the best protocol";
+"Conduit (InProxy)" = "Conduit (InProxy)";
+"Connect via volunteer relay proxies" = "Connect via volunteer relay proxies";
+"CDN Fronting" = "CDN Fronting";
+"Use CDN domain fronting (FRONTED-MEEK-CDN-OSSH)" = "Use CDN domain fronting (FRONTED-MEEK-CDN-OSSH)";
+"Direct" = "Direct";
+"Direct protocols: SSH, OSSH, TLS-OSSH, QUIC, Shadowsocks" = "Direct protocols: SSH, OSSH, TLS-OSSH, QUIC, Shadowsocks";
+
+/* Beast Mode */
+"Establishment" = "Establishment";
+"Beast Mode" = "Beast Mode";
+"Aggressive: tries all protocols on every server" = "Aggressive: tries all protocols on every server";
+"Normal: randomly selects protocols per server" = "Normal: randomly selects protocols per server";
+
+/* CDN Fronting Settings */
+"Edge IP Addresses" = "Edge IP Addresses";
+"Custom CDN Edge IPs" = "Custom CDN Edge IPs";
+"Enter up to 32 IPv4 addresses, one per line or comma-separated" = "Enter up to 32 IPv4 addresses, one per line or comma-separated";
+"Built-in Akamai edge IPs (9) are always included. Your custom IPs are added in addition." = "Built-in Akamai edge IPs (9) are always included. Your custom IPs are added in addition.";
+"SNI Override" = "SNI Override";
+"Custom SNI Hostname" = "Custom SNI Hostname";
+"Optional: override the SNI server name for edge connections" = "Optional: override the SNI server name for edge connections";
+"e.g. example.com" = "e.g. example.com";
+"If empty, the edge IP address itself is used as SNI." = "If empty, the edge IP address itself is used as SNI.";
+"Invalid IP: %@" = "Invalid IP: %@";
+"Maximum 32 IPs allowed" = "Maximum 32 IPs allowed";
+"SNI must be a hostname, not an IP address" = "SNI must be a hostname, not an IP address";
+"Hostname too long (max 253 characters)" = "Hostname too long (max 253 characters)";
+"Invalid label: %@" = "Invalid label: %@";
+"Invalid characters in: %@" = "Invalid characters in: %@";
+
+/* Conduit Settings */
+"Conduit Mode" = "Conduit Mode";
+"Auto (Recommended)" = "Auto (Recommended)";
+"Tries Shir o Khorshid conduits first, falls back to public after timeout" = "Tries Shir o Khorshid conduits first, falls back to public after timeout";
+"Shir o Khorshid Only" = "Shir o Khorshid Only";
+"Only connect via Shir o Khorshid volunteer relays" = "Only connect via Shir o Khorshid volunteer relays";
+"Public Conduits" = "Public Conduits";
+"Use any public InProxy-compatible relay" = "Use any public InProxy-compatible relay";
+"Fallback Timeout" = "Fallback Timeout";
+"2 minutes" = "2 minutes";
+"3 minutes (default)" = "3 minutes (default)";
+"5 minutes" = "5 minutes";
+"10 minutes" = "10 minutes";
+"Time to wait for Shir o Khorshid conduits before falling back to public relays" = "Time to wait for Shir o Khorshid conduits before falling back to public relays";
+"Security" = "Security";
+"Reject Censored Country Proxies" = "Reject Censored Country Proxies";
+"Block relays from Iran, China, Russia, Belarus, Turkmenistan, North Korea" = "Block relays from Iran, China, Russia, Belarus, Turkmenistan, North Korea";
+
+/* Network Sharing */
+"LAN Proxy" = "LAN Proxy";
+"Share Proxy on Network" = "Share Proxy on Network";
+"Allow other devices on your WiFi to use this VPN connection" = "Allow other devices on your WiFi to use this VPN connection";
+"Other devices can connect using:" = "Other devices can connect using:";
+"Configure the proxy address on other devices to use this connection." = "Configure the proxy address on other devices to use this connection.";
+"Security Warning" = "Security Warning";
+"Enable" = "Enable";
+"Cancel" = "Cancel";
+"Sharing the proxy on your local network allows any device on the same WiFi network to route traffic through your VPN connection. Only enable this on trusted networks." = "Sharing the proxy on your local network allows any device on the same WiFi network to route traffic through your VPN connection. Only enable this on trusted networks.";
+
+/* Disguise Mode */
+"App Appearance" = "App Appearance";
+"Shir o Khorshid" = "Shir o Khorshid";
+"Calculator" = "Calculator";
+"Weather" = "Weather";
+"Notes" = "Notes";
+"Clock" = "Clock";
+"Change the app icon to disguise it. iOS will show a brief notification when the icon changes." = "Change the app icon to disguise it. iOS will show a brief notification when the icon changes.";
+"Notifications" = "Notifications";
+"Stealth Notifications" = "Stealth Notifications";
+"Show disguise-appropriate notification content instead of VPN status" = "Show disguise-appropriate notification content instead of VPN status";
+"Note: The VPN indicator in the status bar cannot be hidden on iOS." = "Note: The VPN indicator in the status bar cannot be hidden on iOS.";
+"This device does not support alternate icons" = "This device does not support alternate icons";
