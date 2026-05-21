@@ -34,6 +34,7 @@
 NSString * const SettingsSubscriptionCellSpecifierKey = @"settingsSubscription";
 NSString * const SettingsRestorePurchases = @"settingsRestorePurchases";
 NSString * const SettingsReinstallVPNConfigurationKey = @"settingsReinstallVPNConfiguration";
+NSString * const SettingsShirOKhorshidKey = @"settingsShirOKhorshid";
 
 // PsiCash group
 NSString * const SettingsPsiCashGroupHeaderTitleKey = @"settingsPsiCashGroupTitle";
@@ -66,6 +67,7 @@ NSString * const SettingspsiCashAccountLoginCellSpecifierKey = @"settingsLoginPs
           SettingsSubscriptionCellSpecifierKey,
           SettingsRestorePurchases,
           SettingsReinstallVPNConfigurationKey,
+          SettingsShirOKhorshidKey,
         ];
            
     }
@@ -198,11 +200,18 @@ NSString * const SettingspsiCashAccountLoginCellSpecifierKey = @"settingsLoginPs
 
         [cell setAccessoryType:UITableViewCellAccessoryNone];
         [cell.textLabel setText:[UserStrings Reinstall_vpn_config]];
-                
+
         BOOL enabled = [VPNStateCompat isDisconnected:self.viewModel.vpnStatus];
         cell.userInteractionEnabled = enabled;
         cell.textLabel.enabled = enabled;
         cell.detailTextLabel.enabled = enabled;
+
+    } else if ([specifier.key isEqualToString:SettingsShirOKhorshidKey]) {
+
+        [cell setAccessoryType:UITableViewCellAccessoryDisclosureIndicator];
+        [cell.textLabel setText:@"Shir o Khorshid"];
+        cell.imageView.image = [UIImage systemImageNamed:@"sun.max.fill"];
+        cell.imageView.tintColor = [UIColor systemOrangeColor];
     }
 
     PSIAssert(cell != nil);
@@ -246,10 +255,16 @@ NSString * const SettingspsiCashAccountLoginCellSpecifierKey = @"settingsLoginPs
         [self onRestorePurchases];
 
     } else if ([specifier.key isEqualToString:SettingsReinstallVPNConfigurationKey]) {
-        
+
         // Reinstall VPN config button
         [SwiftDelegate.bridge reinstallVPNConfig];
         [self settingsViewControllerDidEnd:nil];
+
+    } else if ([specifier.key isEqualToString:SettingsShirOKhorshidKey]) {
+
+        // Shir o Khorshid settings
+        ShirSettingsHostingController *shirVC = [[ShirSettingsHostingController alloc] init];
+        [self.navigationController pushViewController:shirVC animated:YES];
     }
 }
 

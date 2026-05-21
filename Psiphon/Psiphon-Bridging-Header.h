@@ -59,6 +59,7 @@
 // Data stores
 #import "PsiphonConfigReader.h"
 #import "PsiphonDataSharedDB.h"
+#import "ShirOKhorshidConstants.h"
 #import "PersistentContainerWrapper.h"
 #import "SharedDebugFlags.h"
 

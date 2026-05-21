@@ -385,6 +385,22 @@
 		</dict>
 		<dict>
 			<key>Title</key>
+			<string>Shir o Khorshid</string>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+		</dict>
+		<dict>
+			<key>Title</key>
+			<string>Shir o Khorshid Settings</string>
+			<key>Key</key>
+			<string>settingsShirOKhorshid</string>
+			<key>Type</key>
+			<string>IASKCustomViewSpecifier</string>
+			<key>DefaultValue</key>
+			<string></string>
+		</dict>
+		<dict>
+			<key>Title</key>
 			<string>SETTINGS_HELP_SECTION</string>
 			<key>BundleTable</key>
 			<string>PsiphonClientCommonLibrary</string>
